@@ -1,5 +1,11 @@
 from turtle import Turtle, Screen
+
 STARTING_POSITIONS = [(0, 0), (-20, 0), (-40, 0)]
+UP = 90
+DOWN = 270
+RIGHT = 0
+LEFT = 180
+
 
 class Snake:
 
@@ -21,4 +27,19 @@ class Snake:
             new_y = self.segements[seg_num - 1].ycor()
             self.segements[seg_num].goto(new_x, new_y)
         self.segements[0].forward(20)
-        self.segements[0].left(90)
+    
+    def up(self):
+        if self.segements[0].heading() != DOWN:
+            self.segements[0].setheading(UP)
+    
+    def down(self):
+        if self.segements[0].heading() != UP:
+            self.segements[0].setheading(DOWN)
+    
+    def right(self):
+        if self.segements[0].heading() != LEFT:
+            self.segements[0].setheading(RIGHT)
+    
+    def left(self):
+        if self.segements[0].heading() != RIGHT:
+            self.segements[0].setheading(LEFT)
