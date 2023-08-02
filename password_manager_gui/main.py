@@ -1,4 +1,7 @@
 from tkinter import *
+from tkinter import messagebox
+from random import choice, randint, shuffle
+import pyperclip
 
 window = Tk()
 window.title("Password Manager")
@@ -31,5 +34,40 @@ add_button = Button(text="Add",width=36)
 
 password_generate.grid(row=3,column=2)
 add_button.grid(row=4,column=1,columnspan=2)
+
+def saveData():
+    if len(site_entry.get()) == 0 or len(password_entry.get()) == 0:
+        messagebox.showinfo(title="Oops", message="Please don't leave any fields empty!")
+        return
+    is_ok = messagebox.askokcancel(title=site_entry.get(), message=f"These are the details entered: \nEmail: {email_entry.get()}\nPassword: {password_entry.get()}\nSave informations?")
+    if is_ok:
+        with open("data.txt", mode="a") as data:
+            data.write(f"{site_entry.get()} ~~ {email_entry.get()} ~~ {password_entry.get()}\n")
+            site_entry.delete(0,END)
+            password_entry.delete(0,END)
+add_button.config(command=saveData)
+
+
+def generate_password():
+    letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+    numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+    symbols = ['!', '#', '$', '%', '&', '(', ')', '*', '+']
+
+    password_letters = [choice(letters) for _ in range(randint(8, 10))]
+    password_symbols = [choice(symbols) for _ in range(randint(2, 4))]
+    password_numbers = [choice(numbers) for _ in range(randint(2, 4))]
+
+    password_list = password_letters + password_symbols + password_numbers
+    shuffle(password_list)
+
+    password = "".join(password_list)
+    password_entry.insert(0, password)
+    pyperclip.copy(password)
+
+password_generate.config(command=generate_password)
+
+site_entry.focus()
+
+
 
 window.mainloop()
