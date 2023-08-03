@@ -6,7 +6,6 @@ import json
 
 window = Tk()
 window.title("Password Manager")
-# window.minsize(width=450,height=500)
 window.config(padx=20, pady=20)
 canvas = Canvas(width=200,height=200)
 
@@ -22,19 +21,21 @@ site_label.grid(row=1,column=0 )
 email_label.grid(row=2, column=0)
 password_label.grid(row=3,column=0)
 
-site_entry = Entry(width=35)
+site_entry = Entry(width=21)
 email_entry = Entry(width=35)
 password_entry = Entry(width=18)
 
-site_entry.grid(row=1, column=1, columnspan=2)
+site_entry.grid(row=1, column=1)
 email_entry.grid(row=2,column=1, columnspan=2)
 password_entry.grid(row=3,column=1)
 
 password_generate = Button(text="Generate password")
 add_button = Button(text="Add",width=36)
+search_button = Button(text="Search",width=13)
 
 password_generate.grid(row=3,column=2)
 add_button.grid(row=4,column=1,columnspan=2)
+search_button.grid(row=1,column=2)
 
 def saveData():
     if len(site_entry.get()) == 0 or len(password_entry.get()) == 0:
@@ -87,6 +88,21 @@ def generate_password():
 
 password_generate.config(command=generate_password)
 
+def search():
+    try:
+        with open("data.json", mode="r") as data_file:
+            data = json.load(data_file)
+    except FileNotFoundError:
+        messagebox.showinfo(title="Error", message="No Saved Data Found")
+    else:
+        if site_entry.get() in data:
+            email = data[site_entry.get()]["email"]
+            password = data[site_entry.get()]["password"]
+            messagebox.showinfo(title=site_entry.get(), message=f"Email: {email}\nPassword: {password}")
+        else:
+            messagebox.showinfo(title="Error", message="No details for the website exists")
+
+search_button.config(command=search)
 site_entry.focus()
 
 
