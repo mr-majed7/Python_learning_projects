@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import messagebox
 from random import choice, randint, shuffle
 import pyperclip
+import json
 
 window = Tk()
 window.title("Password Manager")
@@ -41,8 +42,16 @@ def saveData():
         return
     is_ok = messagebox.askokcancel(title=site_entry.get(), message=f"These are the details entered: \nEmail: {email_entry.get()}\nPassword: {password_entry.get()}\nSave informations?")
     if is_ok:
-        with open("data.txt", mode="a") as data:
-            data.write(f"{site_entry.get()} ~~ {email_entry.get()} ~~ {password_entry.get()}\n")
+        with open("data.json", mode="r") as data_file:
+            data = json.load(data_file)
+            data.update({
+                site_entry.get():{
+                    "email":email_entry.get(),
+                    "password":password_entry.get()
+                }
+            })
+        with open("data.json", mode="w") as data_file:
+            json.dump(data, data_file, indent=4)
             site_entry.delete(0,END)
             password_entry.delete(0,END)
 add_button.config(command=saveData)
