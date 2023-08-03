@@ -42,16 +42,28 @@ def saveData():
         return
     is_ok = messagebox.askokcancel(title=site_entry.get(), message=f"These are the details entered: \nEmail: {email_entry.get()}\nPassword: {password_entry.get()}\nSave informations?")
     if is_ok:
-        with open("data.json", mode="r") as data_file:
-            data = json.load(data_file)
-            data.update({
+        try:
+            with open("data.json", mode="r") as data_file:
+                data = json.load(data_file)
+                data.update({
+                    site_entry.get():{
+                        "email":email_entry.get(),
+                        "password":password_entry.get()
+                    }
+                })
+        except FileNotFoundError:
+            with open("data.json", mode="w") as data_file:
+                data = {
                 site_entry.get():{
                     "email":email_entry.get(),
                     "password":password_entry.get()
                 }
-            })
-        with open("data.json", mode="w") as data_file:
-            json.dump(data, data_file, indent=4)
+            }
+                json.dump(data, data_file, indent=4)
+        else:
+            with open("data.json", mode="w") as data_file:
+                json.dump(data, data_file, indent=4)
+        finally:
             site_entry.delete(0,END)
             password_entry.delete(0,END)
 add_button.config(command=saveData)
