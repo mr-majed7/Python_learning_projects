@@ -41,7 +41,10 @@ parameters = {
 response = requests.post(exercise_endpoint, json=parameters, headers=headers)
 result = response.json()
 
-sheet_url = "https://api.sheety.co/176d5a1cf0b59000a0a182140aa38b0a/myWorkouts/workouts"
+sheet_url = os.getenv("SHEET_URL")
+bearer_headers = {
+"Authorization": os.getenv("BEARER_TOKEN")
+}
 
 for exercise in result["exercises"]:
     data = {
@@ -53,5 +56,4 @@ for exercise in result["exercises"]:
             "calories":exercise["nf_calories"]
         }
     }
-    sheet_response = requests.post(sheet_url, json=data)
-    print(sheet_response.text)
+    sheet_response = requests.post(sheet_url, json=data,headers=bearer_headers)
