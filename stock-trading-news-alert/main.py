@@ -2,6 +2,7 @@ import requests
 from twilio.rest import Client
 import os
 from dotenv import load_dotenv
+import math
 
 STOCK = "TSLA"
 COMPANY_NAME = "Tesla Inc"
@@ -41,7 +42,25 @@ news_params = {
 news_api_response = requests.get("https://newsapi.org/v2/everything?",params=news_params)
 articles = news_api_response.json()["articles"]
 
-for ar in articles:
-    print(ar["title"])
-    print(ar["description"][0:200])
+outgoing_message = ""
+
+for article in articles:
+    title = article["title"]
+    description = article["description"]
+    outgoing_message += f"Headline: {title}\nBrief: {description}\n"
+
+if diff<0:
+    message = client.messages \
+                .create(
+                     body=f"TSLA:🔻{abs(math.floor(diff))}\n{outgoing_message} ",
+                     from_='+13185451545',
+                     to='+8801741816439'
+                 )
+else:
+    message = client.messages \
+                .create(
+                     body=f"TSLA:🔺{abs(math.floor(diff))}\n{outgoing_message} ",
+                     from_='+13185451545',
+                     to='+8801741816439'
+                 )
 
