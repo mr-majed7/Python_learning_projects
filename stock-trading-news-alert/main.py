@@ -30,3 +30,18 @@ diff = ((float(closing_y2) - float(closing_y)) / float(closing_y)) * 100
 
 
 
+news_params = {
+    "q": "Tesla",
+    "from": "2023-08-04",
+    "sortBy": "popularity",
+    "pageSize": "3",
+    "apiKey":os.getenv("NEWS_API_KEY")
+}
+
+news_api_response = requests.get("https://newsapi.org/v2/everything?",params=news_params)
+articles = news_api_response.json()["articles"]
+
+for ar in articles:
+    print(ar["title"])
+    print(ar["description"][0:200])
+
