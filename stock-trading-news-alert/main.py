@@ -53,14 +53,14 @@ if diff<0:
     message = client.messages \
                 .create(
                      body=f"TSLA:🔻{abs(math.floor(diff))}\n{outgoing_message} ",
-                     from_='+13185451545',
-                     to='+8801741816439'
+                     from_=os.getenv("TWILIO_VIRTUAL_NUMBER"),
+                     to=os.getenv("TWILIO_VERIFIED_NUMBER")
                  )
 else:
     message = client.messages \
                 .create(
                      body=f"TSLA:🔺{abs(math.floor(diff))}\n{outgoing_message} ",
-                     from_='+13185451545',
-                     to='+8801741816439'
+                     from_=os.getenv("TWILIO_VIRTUAL_NUMBER"),
+                     to=os.getenv("TWILIO_VERIFIED_NUMBER")
                  )
 
