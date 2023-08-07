@@ -15,18 +15,26 @@ web_page = response.text
 soup = BeautifulSoup(web_page, "html.parser")
 song_titles =  soup.select("li ul li h3")
 song_names = [song.getText().strip() for song in song_titles]
-print(song_names)
 
+sp = spotipy.Spotify(
+    auth_manager=SpotifyOAuth(
+        scope="playlist-modify-private",
+        redirect_uri="http://example.com",
+        client_id=os.getenv("CLIENT_ID"),
+        client_secret=os.getenv("CLIENT_SECRET"),
+        show_dialog=True,
+        cache_path="token.txt",
+        username="Majedul Islam", 
+    )
+)
+user_id = sp.current_user()["id"]
 
-# sp = spotipy.Spotify(
-#     auth_manager=SpotifyOAuth(
-#         scope="playlist-modify-private",
-#         redirect_uri="http://example.com",
-#         client_id=os.getenv("CLIENT_ID"),
-#         client_secret=os.getenv("CLIENT_SECRET"),
-#         show_dialog=True,
-#         cache_path="token.txt",
-#         username="Majedul Islam", 
-#     )
-# )
-# user_id = sp.current_user()["id"]
+song_uris = []
+year = date.split("-")[0]
+for song in song_names:
+    result = sp.search(q=f"track:{song} year:{year}", type="track")
+    try:
+        uri = result["tracks"]["items"][0]["uri"]
+        song_uris.append(uri)
+    except IndexError:
+        print(f"{song} doesn't exist in Spotify. Skipped.")
