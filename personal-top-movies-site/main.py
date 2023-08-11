@@ -5,6 +5,10 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
 import requests
+import os
+import dotenv
+
+dotenv.load_dotenv()
 
 
 app = Flask(__name__)
@@ -70,12 +74,18 @@ class RateMovieForm(FlaskForm):
     review = StringField("Your Review")
     submit = SubmitField("Done")
 
-
+class FIndMovieForm(FlaskForm):
+    title = StringField("Movie Title", validators=[DataRequired()])
+    submit = SubmitField("Add Movie")
 
 @app.route("/")
 def home():
-    result = db.session.execute(db.select(Movie).order_by(Movie.title))
-    all_movies = result.scalars()
+    result = db.session.execute(db.select(Movie).order_by(Movie.ranking))
+    all_movies = result.scalars().all()
+    for i in range(len(all_movies)):
+        all_movies[i].ranking = len(all_movies) - i
+    db.session.commit()
+
     return render_template("index.html", movies=all_movies)
 
 @app.route("/edit", methods=["GET", "POST"])
@@ -100,7 +110,45 @@ def delete():
 
 @app.route("/add", methods=["GET", "POST"])
 def add_movie():
-    pass
+    form = FIndMovieForm()
+    if form.validate_on_submit():
+        title = form.title.data
+        url = "https://api.themoviedb.org/3/search/movie?"
+        headers = {
+            "accept": "application/json",
+            "Authorization": os.getenv("API_READ_ACCESS_TOKEN")
+        }
+        response = requests.get(url=url, headers=headers, params={"query": title})
+        data = response.json()["results"]
+        print(data)
+        return render_template('select.html', options=data)
+
+    return render_template('add.html',form=form)
+
+
+@app.route("/select")
+def select():
+    movie_id = request.args.get('id')
+    if movie_id:
+        url = f"https://api.themoviedb.org/3/movie/{movie_id}"
+        headers = {
+            "accept": "application/json",
+            "Authorization": os.getenv("API_READ_ACCESS_TOKEN")
+        }
+        response = requests.get(url=url, headers=headers)
+        data = response.json()
+        new_movie = Movie(
+            title=data["title"],
+            year=data["release_date"].split("-")[0],
+            description=data["overview"],
+            img_url=f"https://image.tmdb.org/t/p/original/{data['poster_path']}"
+
+        )
+        db.session.add(new_movie)
+        db.session.commit()
+        return redirect(url_for('rate_movie', id=new_movie.id))
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
