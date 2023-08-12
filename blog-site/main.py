@@ -18,6 +18,7 @@ dotenv.load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 Bootstrap5(app)
+ckeditor = CKEditor(app)
 
 # CONNECT TO DB
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///posts.db'
@@ -39,6 +40,13 @@ class BlogPost(db.Model):
 with app.app_context():
     db.create_all()
 
+class PostForm(FlaskForm):
+    title = StringField("Blog Post Title",validators=[DataRequired()])
+    subtitle = StringField("Subtitle",validators=[DataRequired()])
+    author = StringField("Author",validators=[DataRequired()])
+    img_url = StringField("Image URL",validators=[DataRequired(),URL()])
+    body = CKEditorField("Blog Content",validators=[DataRequired()])
+    submit = SubmitField("Submit Post")
 
 @app.route('/')
 def home():
@@ -60,6 +68,50 @@ def contact():
 def getBlog(id):
     blog = db.session.execute(db.select(BlogPost).where(BlogPost.id == id)).scalar()
     return render_template("post.html",post=blog)
+
+@app.route('/new-post',methods=["GET","POST"])
+def new_post():
+    form = PostForm()
+    if form.validate_on_submit():
+        new_post = BlogPost(
+            title = form.title.data,
+            subtitle = form.subtitle.data,
+            date = date.today().strftime("%B %d, %Y"),
+            body = form.body.data,
+            author = form.author.data,
+            img_url = form.img_url.data
+        )
+        db.session.add(new_post)
+        db.session.commit()
+        return redirect(url_for("home"))
+    return render_template("make-post.html",form=form)
+
+@app.route('/edit-post/<int:id>',methods=["GET","POST"])
+def edit_post(id):
+    requested_post = db.session.execute(db.select(BlogPost).where(BlogPost.id == id)).scalar()
+    form = PostForm(
+        title = requested_post.title,
+        subtitle = requested_post.subtitle,
+        author = requested_post.author,
+        img_url = requested_post.img_url,
+        body = requested_post.body
+    )
+    if form.validate_on_submit():
+        requested_post.title = form.title.data
+        requested_post.subtitle = form.subtitle.data
+        requested_post.author = form.author.data
+        requested_post.img_url = form.img_url.data
+        requested_post.body = form.body.data
+        db.session.commit()
+        return redirect(url_for("getBlog",id=id))
+    return render_template("make-post.html",form=form,is_edit=True)
+
+@app.route('/delete/<int:id>')
+def delete_post(id):
+    post_to_delete = db.session.execute(db.select(BlogPost).where(BlogPost.id == id)).scalar()
+    db.session.delete(post_to_delete)
+    db.session.commit()
+    return redirect(url_for("home"))
 
 def send_mail(name,email,phone,message):
     my_email = os.getenv("OWNER_EMAIL")
