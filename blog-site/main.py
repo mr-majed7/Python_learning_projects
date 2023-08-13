@@ -1,17 +1,17 @@
-from post import Post
-import requests
 import smtplib
 import os
 import dotenv
-from flask import Flask, render_template, redirect, url_for,request
+from flask import Flask, render_template, redirect, url_for,request,flash
 from flask_bootstrap import Bootstrap5
 from flask_pymongo import PyMongo
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField
-from wtforms.validators import DataRequired, URL
-from flask_ckeditor import CKEditor, CKEditorField
+from flask_ckeditor import CKEditor
+from flask_gravatar import Gravatar
+from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user
+from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
+from forms import PostForm,RegisterForm,LoginForm
 from datetime import date
 
 dotenv.load_dotenv()
@@ -19,64 +19,89 @@ dotenv.load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
-Bootstrap5(app)
 ckeditor = CKEditor(app)
+Bootstrap5(app)
 
 def get_database():
- 
-   # Provide the mongodb atlas url to connect python to mongodb using pymongo
    CONNECTION_STRING = os.getenv("MONGO_URI")
- 
-   # Create a connection using MongoClient. You can import MongoClient or use pymongo.MongoClient
    client = MongoClient(CONNECTION_STRING)
- 
-   # Create the database for our example (we will use the same database throughout the tutorial
    return client['blogposts']
-  
-# This is added so that many files can reuse the function get_database()
  
 dbname = get_database()
-collection_name = dbname["posts"]  
+post = dbname["posts"]  
+user = dbname["users"]
 
-# post = {
-#     "title": "Exploring the Wonders of Space",
-#     "subtitle": "Journey through the cosmos and discover the secrets of the universe.",
-#     "date": "7th August 2023",
-#     "body": "Breathtaking galaxies, mesmerizing nebulae, and distant planets await the intrepid explorer of space. Gaze through telescopes, study celestial phenomena, and ponder the mysteries of dark matter and black holes. Join us on an astronomical journey beyond our earthly confines. Peer into the heart of Orion's Belt, where stars are born from the cosmic dust of interstellar nurseries. Marvel at the dance of Jupiter's moons as they orbit the giant gas planet, each with its own unique characteristics. Experience the awe of witnessing a solar eclipse, where the moon momentarily conceals the sun, revealing the sun's corona in all its splendor. Embark on a mission to unravel the history of the cosmos, from the Big Bang to the formation of galaxies and the evolution of life. Whether you're a seasoned stargazer or a curious novice, the wonders of space beckon you to explore, learn, and dream.",
-#     "author": "Loreweaver Quillspire",
-#     "img_url": "https://images.unsplash.com/photo-1559657693-e816ff3bd9af?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1171&q=80"
-# }
-# collection_name.insert_one(post)
+login_manager = LoginManager()
+login_manager.init_app(app)
 
-class PostForm(FlaskForm):
-    title = StringField("Blog Post Title",validators=[DataRequired()])
-    subtitle = StringField("Subtitle",validators=[DataRequired()])
-    author = StringField("Author",validators=[DataRequired()])
-    img_url = StringField("Image URL",validators=[DataRequired(),URL()])
-    body = CKEditorField("Blog Content",validators=[DataRequired()])
-    submit = SubmitField("Submit Post")
+
+@login_manager.user_loader
+def load_user(user_id):
+    return user.find_one({"_id": ObjectId(user_id)})
+
+gravatar = Gravatar(app,
+                    size=100,
+                    rating='g',
+                    default='retro',
+                    force_default=False,
+                    force_lower=False,
+                    use_ssl=False,
+                    base_url=None)
+
+class User(UserMixin):
+    def __init__(self, user_data):
+        self.id = str(user_data["_id"])
+        self.email = user_data["email"]
+        self.name = user_data["name"]
+        self.password = user_data["password"]
+        self.posts = user_data.get("posts", [])
+
+
+    def is_active(self):
+        return True 
+
+    def get_id(self):
+        return self.id
+
+@login_manager.user_loader
+def load_user(user_id):
+    user_data = user.find_one({"_id": ObjectId(user_id)})
+    if user_data:
+        return User(user_data)
+    return None
+
+
+def admin_only(function):
+    @wraps(function)
+    def wrapper(*args,**kwargs):
+        if current_user.is_authenticated and current_user.id == "64d945ff308730b07565983b":
+            return function(*args,**kwargs)
+        else:
+            return redirect(url_for("home"))
+    return wrapper
+
 
 @app.route('/')
 def home():
-    all_posts = collection_name.find()
-    return render_template("index.html", posts=all_posts)
+    all_posts = post.find()
+    return render_template("index.html", posts=all_posts,current_user=current_user)
 
 @app.route('/about')
 def about():
-    return render_template("about.html")
+    return render_template("about.html",current_user=current_user)
 
 @app.route('/contact',methods=["GET","POST"])
 def contact():
     if request.method == "POST":
         data = request.form
         send_mail(data["name"],data["email"],data["phone"],data["message"])
-        return render_template("contact.html",msg_sent=True)
-    return render_template("contact.html",msg_sent=False)
+        return render_template("contact.html",msg_sent=True,current_user=current_user)
+    return render_template("contact.html",msg_sent=False,current_user=current_user)
 
 @app.route('/getBlog/<string:id>')
 def getBlog(id):
-    blog = collection_name.find_one({"_id": ObjectId(id)})
-    return render_template("post.html",post=blog)
+    blog = post.find_one({"_id": ObjectId(id)})
+    return render_template("post.html",post=blog,current_user=current_user)
 
 @app.route('/new-post', methods=["GET", "POST"])
 def new_post():
@@ -90,13 +115,14 @@ def new_post():
             "author": form.author.data,
             "img_url": form.img_url.data
         }
-        collection_name.insert_one(new_post)
+        post.insert_one(new_post)
         return redirect(url_for("home"))
-    return render_template("make-post.html", form=form)
+    return render_template("make-post.html", form=form,current_user=current_user)
 
 @app.route('/edit-post/<string:id>', methods=["GET", "POST"])
+@admin_only
 def edit_post(id):
-    requested_post = collection_name.find_one({"_id": ObjectId(id)})
+    requested_post = post.find_one({"_id": ObjectId(id)})
     form = PostForm(
         title=requested_post["title"],
         subtitle=requested_post["subtitle"],
@@ -112,14 +138,57 @@ def edit_post(id):
             "img_url": form.img_url.data,
             "body": form.body.data
         }
-        collection_name.update_one({"_id": ObjectId(id)}, {"$set": updated_post})
-        return redirect(url_for("getBlog", id=id))
-    return render_template("make-post.html", form=form, is_edit=True)
+        post.update_one({"_id": ObjectId(id)}, {"$set": updated_post})
+        return redirect(url_for("getBlog", id=id, current_user=current_user))
+    return render_template("make-post.html", form=form, is_edit=True,current_user=current_user)
 
 @app.route('/delete/<string:id>')
+@admin_only
 def delete_post(id):
-    collection_name.delete_one({"_id": ObjectId(id)})
+    post.delete_one({"_id": ObjectId(id)})
+    return redirect(url_for("home",current_user=current_user))
+@app.route('/register', methods=["GET", "POST"])
+def register():
+    form = RegisterForm()
+    if form.validate_on_submit():
+        if user.find_one({"email": form.email.data}):
+            flash("User already exists")
+            return render_template("register.html", form=form)
+        new_user = {
+            "email": form.email.data,
+            "password": generate_password_hash(form.password.data, method="pbkdf2:sha256", salt_length=8),
+            "name": form.name.data,
+            "posts": []
+        }
+        user.insert_one(new_user)
+        return redirect(url_for("login"))
+    return render_template("register.html", form=form, current_user=current_user)
+
+
+@app.route('/login',methods=["GET","POST"])
+def login():
+    form = LoginForm()
+    if request.method == "POST":
+        data = request.form
+        user_data = user.find_one({"email":data["email"]})
+        if user_data:
+            if check_password_hash(user_data["password"],data["password"]):
+                user_instance = User(user_data)
+                login_user(user_instance)
+                return redirect(url_for("home"))
+            else:
+                flash("Invalid Password")
+                return render_template("login.html",form=form,current_user=current_user)
+        else:
+            flash("User does not exist")
+            return render_template("login.html",form=form,current_user=current_user)
+    return render_template("login.html",form=form,current_user=current_user)
+
+@app.route('/logout')
+def logout():
+    logout_user()
     return redirect(url_for("home"))
+
 
 def send_mail(name,email,phone,message):
     my_email = os.getenv("OWNER_EMAIL")

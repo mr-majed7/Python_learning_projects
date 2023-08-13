@@ -24,7 +24,7 @@
       <div class="row gx-4 gx-lg-5 justify-content-center">
         <div class="col-md-10 col-lg-8 col-xl-7">
           {{ post.body|safe }}
-  
+          {% if current_user.id == "64d945ff308730b07565983b" %}
           <div class="d-flex justify-content-end mb-4">
             <a
               class="btn btn-primary float-right"
@@ -32,6 +32,7 @@
               >Edit Post</a
             >
           </div>
+          {% endif %}
         </div>
       </div>
     </div>
